@@ -55,7 +55,7 @@ class Agent {
 
 
 			//difffiential equations
-			this.dfi = this.control1 / 2;
+			this.dfi = this.control1 * 0.087;
 			this.fi = this.fi + this.dfi * this.dt;
 			this.m = this.m - this.consum * this.dt * this.control2;
 			this.ax = (this.control2 * Math.cos(this.fi) * this.consum * this.jetSpeed / this.m);
@@ -66,17 +66,18 @@ class Agent {
 			this.y = this.y + this.vy * this.dt;
 
 			if (this.y < 0.1) {
-				this.reward += -(this.vx * this.vx + this.vy * this.vy) - (this.m0 - this.m) / 500;
-				//console.log(this.reward + ' ' + this.x + ' ' + this.y);
+				this.reward += -(this.vx * this.vx + this.vy * this.vy) - (((this.m0 - this.m) / 17) * ((this.m0 - this.m) / 17));
+				console.log(Math.sqrt(this.vx * this.vx + this.vy * this.vy) + " " + (this.m0 - this.m));
 				this.stop = true;
 			}
 
 			if ((this.y < 1) && (this.vx < 1) && (this.vy < 1)) {
-				this.reward += -(this.vx * this.vx + this.vy * this.vy) - (this.m0 - this.m) / 500;
+				this.reward += -(this.vx * this.vx + this.vy * this.vy) - (((this.m0 - this.m) / 17) * ((this.m0 - this.m) / 17));
+				console.log(Math.sqrt(this.vx * this.vx + this.vy * this.vy) + " " + (this.m0 - this.m));
 				this.stop = true;
 			}
 
-			if (this.t * this.dt > 50) {
+			if (this.t * this.dt > 100) {
 				this.reward += - 15000;
 				//console.log(this.reward + ' ' + this.x + ' ' + this.y);
 				this.stop = true;
@@ -87,24 +88,27 @@ class Agent {
 
 var obj = {
 	kr: 30,
+	scale: 1000,
 	batch: 1,
 	count: 70,
 	dt: 0.01667,
-	m: 7000,
-	jetMass: 80,
-	jetV: 3000,
-	g: 16,
+	m: 438,
+	jetMass: 0.366,
+	jetV: 2672,
+	g: 1.62,
 
-	spreadX: 100,
-	spreadY: 100,
-	spreadVx: 200,
-	spreadVy: 100,
-	spreadAngle: Math.PI / 2 - 0.4,
+	startX: window.innerWidth/2,
+	startY: 766,
+	spreadX: 15,
+	spreadY: 15,
+	spreadVx: 12,
+	spreadVy: 12,
+	spreadAngle: 0.1,
 
-	mutRate: 0.3,
+	mutRate: 0.2,
 	networkWidth: 4,
 	layers: 1,
-	actvation: "STEP",
+	actvation: "RELU",
 
 	drawGraph: false,
 	loadNetwork: false
@@ -114,23 +118,23 @@ var k = 0, b = 0;
 var rocket = [];
 var k = 0, b = 0;
 var timelast = Date.now();
-var bestRocket = new Agent(obj.dt, 800, 700, 0, 0, 0, 0, Math.PI / 2, 0, 0, obj.m, obj.jetMass, obj.jetV, obj.g);
+var bestRocket = new Agent(obj.dt, obj.startX, obj.startY, 0, 0, 0, 0, Math.PI / 2, 0, 0, obj.m, obj.jetMass, obj.jetV, obj.g);
 
-function resetEnv() {
+function resetEnv(resetNetworks) {
 	k = 0; b = 0;
 	rocket = [];
 
 	for (let i = 0; i < obj.count; i++) {
-		rocket.push(new Agent(obj.dt, 400, 800, 0, 0, 0, 0, Math.PI / 2, 0, 0, obj.m, obj.jetMass, obj.jetV, obj.g));
+		rocket.push(new Agent(obj.dt, obj.startX, obj.startY, 0, 0, 0, 0, Math.PI / 2, 0, 0, obj.m, obj.jetMass, obj.jetV, obj.g));
 	}
 
 	timelast = Date.now();
-	initNeat(obj.count, obj.mutRate, obj.networkWidth, obj.layers, obj.actvation, obj.loadNetwork);
-	bestRocket = new Agent(obj.dt, 800, 700, 0, 0, 0, 0, Math.PI / 2, 0, 0, obj.m, obj.jetMass, obj.jetV, obj.g);
+	if (resetNetworks) { initNeat(obj.count, obj.mutRate, obj.networkWidth, obj.layers, obj.actvation, obj.loadNetwork) };
+	bestRocket = new Agent(obj.dt, obj.startX, obj.startY, 0, 0, 0, 0, Math.PI / 2, 0, 0, obj.m, obj.jetMass, obj.jetV, obj.g);
 	drawGraph(neat.population[0].graph(1000 / 3, 1000 / 4.5), '.best');
 };
 
-resetEnv();
+resetEnv(true);
 
 function maxChoice(probabilities) {
 	maxN = 0;
@@ -153,21 +157,21 @@ let thread = setInterval(function () {
 			populationFinish = true;
 			for (let i = 0; i < obj.count; i++) {
 				if (!rocket[i].stop) populationFinish = false;
-				probabilities = neat.population[i].activate([/*rocket[i].x/500,*/rocket[i].y / 1000, rocket[i].vx / obj.spreadVx, rocket[i].vy / obj.spreadVy, rocket[i].fi / 2/*,rocket[i].m/obj.m*/]);
+				probabilities = neat.population[i].activate([/*rocket[i].x/500,*/rocket[i].y / obj.scale, rocket[i].vx / obj.spreadVx, rocket[i].vy / obj.spreadVy, rocket[i].fi / 2/*,rocket[i].m/obj.m*/]);
 				rocket[i].step(probabilities);
 			}
 			if (populationFinish) {
-				let var1 = Math.random() * obj.spreadX, var2 = Math.random() * obj.spreadY, var3 = Math.random() * obj.spreadVx, var4 = Math.random() * obj.spreadVy, var5 = Math.random() * obj.spreadAngle + (Math.PI / 2 - obj.spreadAngle / 2);
+				let var1 = Math.random() * obj.spreadX, var2 = Math.random() * obj.spreadY, var3 = Math.random() * obj.spreadVx, var4 = Math.random() * obj.spreadVy - 24, var5 = Math.random() * obj.spreadAngle + (Math.PI / 2 - obj.spreadAngle / 2);
 
 				for (let i = 0; i < obj.count; i++) {
-					rocket[i].reset(800 + var1 - obj.spreadX / 2, 700 + var2 - obj.spreadY / 2, var3 - obj.spreadVx / 2, var4 - obj.spreadVy / 2, var5, obj.m, obj.jetMass, obj.jetV, false);
+					rocket[i].reset(obj.startX + var1 - obj.spreadX / 2, obj.startY + var2 - obj.spreadY / 2, var3 - obj.spreadVx / 2, var4 - obj.spreadVy / 2, var5, obj.m, obj.jetMass, obj.jetV, false);
 				}
 				b++;
 				if (b == obj.batch) {
 					b = 0;
 					for (let i = 0; i < obj.count; i++) {
 						neat.population[i].score = rocket[i].reward;
-						rocket[i].reset(800 + var1 - obj.spreadX / 2, 700 + var2 - obj.spreadY / 2, var3 - obj.spreadVx / 2, var4 - obj.spreadVy / 2, var5, obj.m, obj.jetMass, obj.jetV, true);
+						rocket[i].reset(obj.startX + var1 - obj.spreadX / 2, obj.startY + var2 - obj.spreadY / 2, var3 - obj.spreadVx / 2, var4 - obj.spreadVy / 2, var5, obj.m, obj.jetMass, obj.jetV, true);
 					}
 					endEvaluation();
 					//console.log(Date.now() - timelast);
@@ -226,13 +230,13 @@ function draw() {
 		c = color(168, 168, 168);
 		stroke(c);
 		strokeWeight(1);
-		triangle(obj.kr * Math.cos(rocket[i].fi - Math.PI * 2.5 / 3) + rocket[i].x / 1000 * height * 0.92, - obj.kr * Math.sin(rocket[i].fi - Math.PI * 2.5 / 3) - rocket[i].y / 1000 * height * 0.92 + height * 0.92 - obj.kr*0.85, obj.kr * 1.5 * Math.cos(rocket[i].fi) + rocket[i].x / 1000 * height * 0.92, - obj.kr * 1.5 * Math.sin(rocket[i].fi) - rocket[i].y / 1000 * height * 0.92 + height * 0.92 - obj.kr*0.85, obj.kr * Math.cos(rocket[i].fi + Math.PI * 2.5 / 3) + rocket[i].x / 1000 * height * 0.92, - obj.kr * Math.sin(rocket[i].fi + Math.PI * 2.5 / 3) - rocket[i].y / 1000 * height * 0.92 + height * 0.92 - obj.kr*0.85);
+		triangle(obj.kr * Math.cos(rocket[i].fi - Math.PI * 2.5 / 3) + rocket[i].x / obj.scale * height * 0.92, - obj.kr * Math.sin(rocket[i].fi - Math.PI * 2.5 / 3) - rocket[i].y / obj.scale * height * 0.92 + height * 0.92 - obj.kr*0.85, obj.kr * 1.5 * Math.cos(rocket[i].fi) + rocket[i].x / obj.scale * height * 0.92, - obj.kr * 1.5 * Math.sin(rocket[i].fi) - rocket[i].y / obj.scale * height * 0.92 + height * 0.92 - obj.kr*0.85, obj.kr * Math.cos(rocket[i].fi + Math.PI * 2.5 / 3) + rocket[i].x / obj.scale * height * 0.92, - obj.kr * Math.sin(rocket[i].fi + Math.PI * 2.5 / 3) - rocket[i].y / obj.scale * height * 0.92 + height * 0.92 - obj.kr*0.85);
 	}
 
-	let probabilities = bestRocketGenome.activate([/*bestRocket.x/500,*/bestRocket.y / 1000, bestRocket.vx / obj.spreadVx, bestRocket.vy / obj.spreadVy, bestRocket.fi / 2/*,bestRocket.m/obj.m*/]);
+	let probabilities = bestRocketGenome.activate([/*bestRocket.x/500,*/bestRocket.y / obj.scale, bestRocket.vx / obj.spreadVx, bestRocket.vy / obj.spreadVy, bestRocket.fi / 2/*,bestRocket.m/obj.m*/]);
 	bestRocket.step(probabilities);
 	if (bestRocket.stop) {
-		bestRocket.reset(800 + Math.random() * obj.spreadX - obj.spreadX / 2, 700 + Math.random() * obj.spreadY - obj.spreadY / 2, Math.random() * obj.spreadVx - obj.spreadVx / 2, Math.random() * obj.spreadVy - obj.spreadVy / 2, Math.random() * obj.spreadAngle + (Math.PI / 2 - obj.spreadAngle / 2), obj.m, obj.jetMass, obj.jetV, true);
+		bestRocket.reset(obj.startX + Math.random() * obj.spreadX - obj.spreadX / 2, obj.startY + Math.random() * obj.spreadY - obj.spreadY / 2, Math.random() * obj.spreadVx - obj.spreadVx / 2, Math.random() * obj.spreadVy - obj.spreadVy / 2 - 24, Math.random() * obj.spreadAngle + (Math.PI / 2 - obj.spreadAngle / 2), obj.m, obj.jetMass, obj.jetV, true);
 		bestRocket.stop = false;
 		bestRocketGenome = neat.population[0];
 	}
@@ -240,19 +244,19 @@ function draw() {
 	c = color(0, 237, 213);
 	stroke(c);
 	strokeWeight(2);
-	triangle(obj.kr * Math.cos(bestRocket.fi - Math.PI * 2.5 / 3) + bestRocket.x / 1000 * height * 0.92, - obj.kr * Math.sin(bestRocket.fi - Math.PI * 2.5 / 3) - bestRocket.y / 1000 * height * 0.92 + height * 0.92 - obj.kr*0.85, obj.kr * 1.5 * Math.cos(bestRocket.fi) + bestRocket.x / 1000 * height * 0.92, - obj.kr * 1.5 * Math.sin(bestRocket.fi) - bestRocket.y / 1000 * height * 0.92 + height * 0.92 - obj.kr*0.85, obj.kr * Math.cos(bestRocket.fi + Math.PI * 2.5 / 3) + bestRocket.x / 1000 * height * 0.92, - obj.kr * Math.sin(bestRocket.fi + Math.PI * 2.5 / 3) - bestRocket.y / 1000 * height * 0.92 + height * 0.92 - obj.kr*0.85);
-	//circle(bestRocket.x / 1000 * height * 0.92, height * 0.92 -bestRocket.y / 1000 * height * 0.92, 5);
+	triangle(obj.kr * Math.cos(bestRocket.fi - Math.PI * 2.5 / 3) + bestRocket.x / obj.scale * height * 0.92, - obj.kr * Math.sin(bestRocket.fi - Math.PI * 2.5 / 3) - bestRocket.y / obj.scale * height * 0.92 + height * 0.92 - obj.kr*0.85, obj.kr * 1.5 * Math.cos(bestRocket.fi) + bestRocket.x / obj.scale * height * 0.92, - obj.kr * 1.5 * Math.sin(bestRocket.fi) - bestRocket.y / obj.scale * height * 0.92 + height * 0.92 - obj.kr*0.85, obj.kr * Math.cos(bestRocket.fi + Math.PI * 2.5 / 3) + bestRocket.x / obj.scale * height * 0.92, - obj.kr * Math.sin(bestRocket.fi + Math.PI * 2.5 / 3) - bestRocket.y / obj.scale * height * 0.92 + height * 0.92 - obj.kr*0.85);
+	//circle(bestRocket.x / obj.scale * height * 0.92, height * 0.92 -bestRocket.y / obj.scale * height * 0.92, 5);
 
 	noStroke();
 	textSize(14);
 	fill(255);
-	text("X: " + nfc(bestRocket.x, 2) + "  Y: " + nfc(bestRocket.y, 2), (bestRocket.x + 79) / 1000 * height * 0.9, -(bestRocket.y + 90) / 1000 * height * 0.9 + height * 0.9);
-	text("Vx: " + nfc(bestRocket.vx, 2) + "  Vy: " + nfc(bestRocket.vy, 2), (bestRocket.x + 79) / 1000 * height * 0.9, -(bestRocket.y + 65) / 1000 * height * 0.9 + height * 0.9);
-	text("Ax: " + nfc(bestRocket.ax, 2) + "  Ay: " + nfc(bestRocket.ay, 2), (bestRocket.x + 79) / 1000 * height * 0.9, -(bestRocket.y + 40) / 1000 * height * 0.9 + height * 0.9);
-	text("t: " + nfc(bestRocket.t * bestRocket.dt, 2), (bestRocket.x + 79) / 1000 * height * 0.9, -(bestRocket.y + 15) / 1000 * height * 0.9 + height * 0.9);
-
-	text("out: " + nfc((probabilities[0] - 0.5) * 2, 3) + " " + nfc(probabilities[1], 3), (bestRocket.x + 79) / 1000 * height * 0.9, -(bestRocket.y - 35) / 1000 * height * 0.9 + height * 0.9);
-	of.location = createVector(obj.kr * 0.95 * Math.cos(bestRocket.fi - Math.PI) + bestRocket.x / 1000 * height * 0.92, -obj.kr * 0.95 * Math.sin(bestRocket.fi - Math.PI) - bestRocket.y / 1000 * height * 0.92 + height * 0.92 - obj.kr*0.85);
+	text("X: " + nfc(bestRocket.x, 2) + "  Y: " + nfc(bestRocket.y, 2), (bestRocket.x + 79) / obj.scale * height * 0.9, -(bestRocket.y + 90) / obj.scale * height * 0.9 + height * 0.9);
+	text("Vx: " + nfc(bestRocket.vx, 2) + "  Vy: " + nfc(bestRocket.vy, 2), (bestRocket.x + 79) / obj.scale * height * 0.9, -(bestRocket.y + 65) / obj.scale * height * 0.9 + height * 0.9);
+	text("Ax: " + nfc(bestRocket.ax, 2) + "  Ay: " + nfc(bestRocket.ay, 2), (bestRocket.x + 79) / obj.scale * height * 0.9, -(bestRocket.y + 40) / obj.scale * height * 0.9 + height * 0.9);
+	text("t: " + nfc(bestRocket.t * bestRocket.dt, 2), (bestRocket.x + 79) / obj.scale * height * 0.9, -(bestRocket.y + 15) / obj.scale * height * 0.9 + height * 0.9);
+	text("m: " + nfc(bestRocket.m, 2), (bestRocket.x + 79) / obj.scale * height * 0.9, -(bestRocket.y - 10) / obj.scale * height * 0.9 + height * 0.9);
+	text("out: " + nfc((probabilities[0] - 0.5) * 2, 3) + " " + nfc(probabilities[1], 3), (bestRocket.x + 79) / obj.scale * height * 0.9, -(bestRocket.y - 35) / obj.scale * height * 0.9 + height * 0.9);
+	of.location = createVector(obj.kr * 0.95 * Math.cos(bestRocket.fi - Math.PI) + bestRocket.x / obj.scale * height * 0.92, -obj.kr * 0.95 * Math.sin(bestRocket.fi - Math.PI) - bestRocket.y / obj.scale * height * 0.92 + height * 0.92 - obj.kr*0.85);
 	of.f.speed = 3 * obj.dt * 60;
 	of.f.speedx = 1 * obj.dt * 60;
 	of.f.angle = [(-bestRocket.fi - Math.PI) * 57.3 - 10, (-bestRocket.fi - Math.PI) * 57.3 + 10];
@@ -278,10 +282,10 @@ fenv = gui.addFolder("agent");
 fenv.open();
 
 var c3 = fenv.add(obj, 'dt', 0.001, 0.1).listen();
-var c4 = fenv.add(obj, 'm', 1000, 20000).listen();
-var c5 = fenv.add(obj, 'jetMass', 10, 100).listen();
+var c4 = fenv.add(obj, 'm', 10, 20000, 0.1).listen();
+var c5 = fenv.add(obj, 'jetMass', 0.1, 100, 0.01).listen();
 var c6 = fenv.add(obj, 'jetV', 1000, 8000).listen();
-var c7 = fenv.add(obj, 'g', 1, 20).listen();
+var c7 = fenv.add(obj, 'g', 1, 20, 0.01).listen();
 
 fstc = gui.addFolder("starting conditions");
 fstc.open();
@@ -297,7 +301,7 @@ fnet.open();
 var c17 = fnet.add(obj, 'loadNetwork').listen();
 var c1 = fnet.add(obj, 'count', 50, 1000).step(10).listen();
 var c2 = fnet.add(obj, 'batch', 1, 100).step(1).listen();
-var c13 = fnet.add(obj, 'mutRate', 0.05, 0.5).listen();
+var c13 = fnet.add(obj, 'mutRate', 0, 0.5).listen();
 var c14 = fnet.add(obj, 'networkWidth', 3, 12).step(1).listen();
 var c15 = fnet.add(obj, 'layers', [1, 2]).listen();
 var c16 = fnet.add(obj, 'actvation', ["STEP", "RELU", "TANH"]).listen();
@@ -306,112 +310,112 @@ var c16 = fnet.add(obj, 'actvation', ["STEP", "RELU", "TANH"]).listen();
 c1.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c2.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(false);
 	loop();
 });
 
 c3.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c4.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c5.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c6.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c7.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c8.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c9.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c10.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c11.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c12.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c13.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(false);
 	loop();
 });
 
 c14.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c15.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
 c16.onFinishChange(function (value) {
 	noLoop();
 	obj.loadNetwork = false;
-	resetEnv();
+	resetEnv(true);
 	loop();
 });
 
@@ -419,24 +423,51 @@ c17.onFinishChange(function (value) {
 	noLoop();
 	if (value) {
 		obj.batch = 1;
-		obj.count = 70;
-		obj.dt = 0.01667;
-		obj.m = 7000;
-		obj.jetMass = 80;
-		obj.jetV = 3000;
-		obj.g = 16;
+		obj.count = 7;
+		obj.dt = 0.05;
+		obj.m = 438;
+		obj.jetMass = 0.366;
+		obj.jetV = 2672;
+		obj.g = 1.62;
 
-		obj.spreadX = 100;
-		obj.spreadY = 100;
-		obj.spreadVx = 200;
-		obj.spreadVy = 100;
-		obj.spreadAngle = Math.PI / 2 - 0.4;
+		obj.startX = window.innerWidth / 2;
+		obj.startY = 766;
+		obj.spreadX = 15;
+		obj.spreadY = 15;
+		obj.spreadVx = 12;
+		obj.spreadVy = 12;
+		obj.spreadAngle = 0.1;
 
-		obj.mutRate = 0.3;
+		obj.mutRate = 0;
 		obj.networkWidth = 4;
 		obj.layers = 1;
-		obj.actvation = "STEP";
+		obj.actvation = "RELU";
 	}
-	resetEnv();
+	/*kr: 30,
+	scale: 1000,
+	batch: 1,
+	count: 70,
+	dt: 0.01667,
+	m: 438,
+	jetMass: 0.366,
+	jetV: 2672,
+	g: 1.62,
+
+	startX: window.innerWidth/2,
+	startY: 766,
+	spreadX: 15,
+	spreadY: 15,
+	spreadVx: 12,
+	spreadVy: 12,
+	spreadAngle: 0.1,
+
+	mutRate: 0.2,
+	networkWidth: 4,
+	layers: 1,
+	actvation: "RELU",
+
+	drawGraph: false,
+	loadNetwork: false*/
+	resetEnv(true);
 	loop();
 });

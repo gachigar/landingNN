@@ -64,7 +64,7 @@ function initNeat(count, mut_rate, width, hiddenLayers, act, loadNetwork) {
   );
   if (loadNetwork) {
     neat.population = population;
-    neat.generation = 24000;
+    neat.generation = 11300;
   }
 }
 
@@ -72,6 +72,8 @@ function initNeat(count, mut_rate, width, hiddenLayers, act, loadNetwork) {
 function endEvaluation() {
   document.getElementById("gt").innerText = "Generation: " + neat.generation;
   document.getElementById("st").innerText = "Fittest score: " + neat.getFittest().score.toFixed(2); //239, 47, 96
+  console.log(neat.getFittest().score.toFixed(2));
+
   if (neat.getFittest().score > -625) {
     document.getElementById("st").style.textShadow = "0 0 1.5vw white, 0 0 1.5vw rgb(" + 0.239 * Math.sqrt(-neat.getFittest().score)/25*1000 + ", 237, 213), 0 0 3vw rgb(" + 0.239 * Math.sqrt(-neat.getFittest().score)/25*1000 + ", 237, 213), 0 0 4vw rgb(" + 0.239 * Math.sqrt(-neat.getFittest().score)/25*1000  + ", 237, 213)";
   } else {
@@ -109,7 +111,7 @@ function endEvaluation() {
 
   // Replace the old population with the new population
   neat.population = newPopulation;
-  neat.mutate();
+  //neat.mutate();
 
   neat.generation++;
 }
