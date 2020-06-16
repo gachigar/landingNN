@@ -111,7 +111,7 @@ function endEvaluation() {
 
   // Replace the old population with the new population
   neat.population = newPopulation;
-  //neat.mutate();
+  neat.mutate();
 
   neat.generation++;
 }
